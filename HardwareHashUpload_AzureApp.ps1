@@ -1,86 +1,89 @@
 <#
 .SYNOPSIS
-    Gathers device info, prompts for a Group Tag, and sends the data 
-    to the secure Autopilot Registration Service.
-.PARAMETER TechnicianEmail
-    The email of the technician running the script for logging purposes.
+    Authenticates the technician using the Device Code Flow, gathers device info, 
+    and sends it to the secure Autopilot Registration Service for processing.
 #>
-param (
-    [Parameter(Mandatory = $true)]
-    [string]$TechnicianEmail
-)
 
 # --- CONFIGURATION ---
-$functionUrl = "https://fa-intunedeviceauto.azurewebsites.net/api/RegisterDevice" # <-- PASTE YOUR FUNCTION URL HERE (without the code part)
-$functionApiKey = "gVcy7hy90cLNwnQarLU6PGAqYUv2af0MHIrc1ksPCXZyAzFu4zj_Gg==" # <-- PASTE YOUR KEY HERE
+# You can find these IDs in your Entra ID App Registration overview page.
+$clientId = "6b1311e5-123f-49db-acdf-8847c2d00bed"
+$tenantId = "3c55a97a-ded8-475c-ad84-cd9db6955762"
 
-Write-Host "Starting Autopilot registration..." -ForegroundColor Cyan
+# This is the URL of your Azure Function.
+$functionUrl = "https://fa-intunedeviceauto.azurewebsites.net/api/RegisterDevice"
 
-# --- 1. Prompt user to select a Group Tag from a menu ---
+# --- SCRIPT START ---
+
+# 1. Ensure MSAL.PS module is available
+if (-not (Get-Module -ListAvailable -Name MSAL.PS)) {
+    Write-Host "MSAL.PS module not found. Attempting to install..." -ForegroundColor Yellow
+    try {
+        Install-Module MSAL.PS -Scope CurrentUser -Force -AllowClobber
+    } catch {
+        Write-Host "Failed to install MSAL.PS module. Please install it manually and try again." -ForegroundColor Red
+        exit 1
+    }
+}
+
+# 2. Authenticate the user via Device Code Flow
+Write-Host "Authenticating user..." -ForegroundColor Cyan
+$scopes = "https://graph.microsoft.com/DeviceManagementServiceConfig.ReadWrite.All"
+try {
+    # This command will automatically display the code and URL to the user and wait for them to sign in.
+    $authResult = Get-MsalToken -ClientId $clientId -TenantId $tenantId -DeviceCode -Scope $scopes
+    Write-Host "Authentication successful for $($authResult.Account.Username)" -ForegroundColor Green
+} catch {
+    Write-Host "Authentication failed: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
+# 3. Prompt user to select a Group Tag from a menu
 $groupTag = ""
 do {
     Write-Host "`nPlease select the profile for this device:" -ForegroundColor Yellow
     Write-Host "  [1] Standard User (CORP)"
     Write-Host "  [2] Executive User (EO)"
     Write-Host "  [3] Kiosk Device (KSK)"
-    
     $selection = Read-Host -Prompt "Enter your choice (1-3)"
-    
     switch ($selection) {
         '1' { $groupTag = "CORP" }
         '2' { $groupTag = "EO" }
         '3' { $groupTag = "KSK" }
-        default {
-            Write-Host "Invalid selection. Please enter a number from 1 to 3." -ForegroundColor Red
-        }
+        default { Write-Host "Invalid selection." -ForegroundColor Red }
     }
 } while ([string]::IsNullOrWhiteSpace($groupTag))
 
 Write-Host "Profile selected: '$groupTag'" -ForegroundColor Green
 
 try {
-    # --- 2. Gather Local Device Info ---
+    # 4. Gather Local Device Info
     Write-Host "`nGathering device hardware information..." -ForegroundColor Yellow
     $SerialNumber = (Get-WmiObject -Class Win32_BIOS).SerialNumber
     $HardwareHash = (Get-WmiObject -Namespace root/cimv2/mdm/dmmap -Class MDM_DevDetail_Ext01 -Filter "InstanceID='Ext' AND ParentID='./DevDetail'").DeviceHardwareData
+    if ([string]::IsNullOrEmpty($HardwareHash)) { throw "FATAL: Could not retrieve the device hardware hash." }
 
-    if ([string]::IsNullOrEmpty($HardwareHash)) {
-        throw "FATAL: Could not retrieve the device hardware hash."
-    }
-    Write-Host "  - Serial Number: $SerialNumber" -ForegroundColor Green
-    Write-Host "  - Hardware Hash successfully retrieved." -ForegroundColor Green
-
-    # --- 3. Send Data to the Azure Function ---
+    # 5. Send Data to the Azure Function
     Write-Host "`nSending data to the registration service..." -ForegroundColor Yellow
-    
+    $headers = @{
+        "Authorization" = "Bearer $($authResult.AccessToken)"
+        "Content-Type"  = "application/json"
+    }
     $payload = @{
         SerialNumber    = $SerialNumber
         HardwareHash    = $HardwareHash
         GroupTag        = $groupTag
-        TechnicianEmail = $TechnicianEmail
     } | ConvertTo-Json
-
-    $headers = @{
-        "Content-Type"    = "application/json"
-        "x-functions-key" = $functionApiKey
-    }
-
-    $response = Invoke-RestMethod -Uri $functionUrl -Method POST -Body $payload -Headers $headers
     
+    $response = Invoke-RestMethod -Uri $functionUrl -Method POST -Body $payload -Headers $headers
     Write-Host "`nSUCCESS: Service responded: '$response'" -ForegroundColor Green
 
-    # --- 4. Initiate System Reset ---
-    Write-Host "`nRegistration complete. The device must be reset to apply the Autopilot profile." -ForegroundColor Yellow
-    $resetConfirmation = Read-Host "WARNING: This will erase all data and reset Windows. Proceed with reset? (Y/N)"
-    if ($resetConfirmation -eq 'Y' -or $resetConfirmation -eq 'y') {
-        Write-Host "Initiating system reset..." -ForegroundColor Red
+    # 6. Initiate System Reset
+    $reset = Read-Host "`nRegistration complete. The device must be reset. Proceed? (Y/N)"
+    if ($reset -eq 'Y' -or $reset -eq 'y') {
         Start-Process "systemreset" -ArgumentList "-factoryreset" -Wait
-    } else {
-        Write-Host "Reset cancelled. Please manually reset the device to complete the Autopilot process." -ForegroundColor Yellow
     }
 
 } catch {
-    Write-Host "`nAN ERROR OCCURRED:" -ForegroundColor Red
-    Write-Host $_.Exception.Message -ForegroundColor Red
+    Write-Host "`nAN ERROR OCCURRED: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
