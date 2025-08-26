@@ -93,13 +93,10 @@ try {
             Write-Host "   1. On the 'Choose an option' screen, select:" -ForegroundColor Yellow
             Write-Host "      -> [Remove everything]" -ForegroundColor White
             Write-Host " "
-            Write-Host "   2. On the 'How would you like to reinstall Windows?' screen, select:" -ForegroundColor Yellow
-            Write-Host "      -> [Local reinstall]" -ForegroundColor White
+            Write-Host "   2. On the next screen, select:" -ForegroundColor Yellow
+            Write-Host "      -> [Just remove my files]" -ForegroundColor White
             Write-Host " "
-            Write-Host "   3. On the 'Additional settings' screen, select:" -ForegroundColor Yellow
-            Write-Host "      -> [Next]" -ForegroundColor White
-            Write-Host " "
-            Write-Host "   4. On the final 'Ready to reset this PC' screen, click:" -ForegroundColor Yellow
+            Write-Host "   3. On the final 'Ready to reset this PC' screen, click:" -ForegroundColor Yellow
             Write-Host "      -> [Reset]" -ForegroundColor White
             Write-Host " "
             Write-Host "========================================================================" -ForegroundColor Cyan
