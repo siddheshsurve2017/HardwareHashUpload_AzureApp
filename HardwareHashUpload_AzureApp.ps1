@@ -45,6 +45,8 @@ if (-not (Get-Module -ListAvailable -Name MSAL.PS)) {
     }
 }
 
+# --- FIX: Force the session to load the newly installed/updated module ---
+Import-Module MSAL.PS -Force
 
 # 2. Authenticate the user via Device Code Flow
 Write-Host "Authenticating user..." -ForegroundColor Cyan
