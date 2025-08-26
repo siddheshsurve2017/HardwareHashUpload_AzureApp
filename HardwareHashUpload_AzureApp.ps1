@@ -6,8 +6,8 @@
 
 # --- CONFIGURATION ---
 # You can find these IDs in your Entra ID App Registration overview page.
-$clientId = "6b1311e5-123f-49db-acdf-8847c2d00bed"
-$tenantId = "3c55a97a-ded8-475c-ad84-cd9db6955762"
+$clientId = "3c55a97a-ded8-475c-ad84-cd9db6955762"
+$tenantId = "6b1311e5-123f-49db-acdf-8847c2d00bed"
 
 # This is the URL of your Azure Function.
 $functionUrl = "https://fa-intunedeviceauto.azurewebsites.net/api/RegisterDevice"
