@@ -16,16 +16,27 @@ $functionApiKey = "gVcy7hy90cLNwnQarLU6PGAqYUv2af0MHIrc1ksPCXZyAzFu4zj_Gg==" # <
 
 Write-Host "Starting Autopilot registration..." -ForegroundColor Cyan
 
-# --- 1. Prompt for Group Tag ---
+# --- 1. Prompt user to select a Group Tag from a menu ---
 $groupTag = ""
 do {
-    $groupTag = Read-Host -Prompt "Please enter the Autopilot Group Tag for this device"
-    if ([string]::IsNullOrWhiteSpace($groupTag)) {
-        Write-Host "Group Tag cannot be empty. Please try again." -ForegroundColor Red
+    Write-Host "`nPlease select the profile for this device:" -ForegroundColor Yellow
+    Write-Host "  [1] Standard User (CORP)"
+    Write-Host "  [2] Executive User (EO)"
+    Write-Host "  [3] Kiosk Device (KSK)"
+    
+    $selection = Read-Host -Prompt "Enter your choice (1-3)"
+    
+    switch ($selection) {
+        '1' { $groupTag = "CORP" }
+        '2' { $groupTag = "EO" }
+        '3' { $groupTag = "KSK" }
+        default {
+            Write-Host "Invalid selection. Please enter a number from 1 to 3." -ForegroundColor Red
+        }
     }
 } while ([string]::IsNullOrWhiteSpace($groupTag))
 
-Write-Host "Using Group Tag: '$groupTag'" -ForegroundColor Green
+Write-Host "Profile selected: '$groupTag'" -ForegroundColor Green
 
 try {
     # --- 2. Gather Local Device Info ---
@@ -58,10 +69,14 @@ try {
     
     Write-Host "`nSUCCESS: Service responded: '$response'" -ForegroundColor Green
 
-    # --- 4. Prompt for Restart ---
-    $restart = Read-Host "`nRegistration complete. A restart is required. Restart now? (Y/N)"
-    if ($restart -eq 'Y' -or $restart -eq 'y') {
-        Restart-Computer -Force
+    # --- 4. Initiate System Reset ---
+    Write-Host "`nRegistration complete. The device must be reset to apply the Autopilot profile." -ForegroundColor Yellow
+    $resetConfirmation = Read-Host "WARNING: This will erase all data and reset Windows. Proceed with reset? (Y/N)"
+    if ($resetConfirmation -eq 'Y' -or $resetConfirmation -eq 'y') {
+        Write-Host "Initiating system reset..." -ForegroundColor Red
+        Start-Process "systemreset" -ArgumentList "-factoryreset" -Wait
+    } else {
+        Write-Host "Reset cancelled. Please manually reset the device to complete the Autopilot process." -ForegroundColor Yellow
     }
 
 } catch {
