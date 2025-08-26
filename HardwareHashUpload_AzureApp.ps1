@@ -29,26 +29,36 @@ if (-not (Get-Module -ListAvailable -Name MSAL.PS)) {
 Write-Host "Authenticating user..." -ForegroundColor Cyan
 $scopes = "https://graph.microsoft.com/DeviceManagementServiceConfig.ReadWrite.All", "https://graph.microsoft.com/GroupMember.Read.All"
 try {
-    # Override the default device code message to make it more prominent
-    $deviceCodeResult = Get-MsalToken -ClientId $clientId -TenantId $tenantId -DeviceCode -Scope $scopes -DeviceCodeCallback {
-        param($deviceCode)
-        Write-Host " "
-        Write-Host "========================================================================" -ForegroundColor Cyan
-        Write-Host "            >>> TECHNICIAN AUTHENTICATION REQUIRED <<<" -ForegroundColor White
-        Write-Host "========================================================================" -ForegroundColor Cyan
-        Write-Host " "
-        Write-Host "   Please use another device (like your phone) to complete the login." -ForegroundColor Yellow
-        Write-Host " "
-        Write-Host "   Open a web browser and go to:" -ForegroundColor Yellow
-        Write-Host "      -> $($deviceCode.VerificationUri)" -ForegroundColor White
-        Write-Host " "
-        Write-Host "   And enter this code:" -ForegroundColor Yellow
-        Write-Host "      -> $($deviceCode.UserCode)" -ForegroundColor White
-        Write-Host " "
-        Write-Host "========================================================================" -ForegroundColor Cyan
-        Write-Host "`nWaiting for you to complete the sign-in process..." -ForegroundColor Yellow
+    # Check MSAL.PS version to determine if the custom callback is supported
+    $msalModule = Get-Module -Name MSAL.PS
+    $requiredVersion = [System.Version]"4.29.0.0" # Version when -DeviceCodeCallback was introduced
+
+    if ($msalModule.Version -ge $requiredVersion) {
+        # Use the enhanced callback for modern versions
+        $authResult = Get-MsalToken -ClientId $clientId -TenantId $tenantId -DeviceCode -Scope $scopes -DeviceCodeCallback {
+            param($deviceCode)
+            Write-Host " "
+            Write-Host "========================================================================" -ForegroundColor Cyan
+            Write-Host "            >>> TECHNICIAN AUTHENTICATION REQUIRED <<<" -ForegroundColor White
+            Write-Host "========================================================================" -ForegroundColor Cyan
+            Write-Host " "
+            Write-Host "   Please use another device (like your phone) to complete the login." -ForegroundColor Yellow
+            Write-Host " "
+            Write-Host "   Open a web browser and go to:" -ForegroundColor Yellow
+            Write-Host "      -> $($deviceCode.VerificationUri)" -ForegroundColor White
+            Write-Host " "
+            Write-Host "   And enter this code:" -ForegroundColor Yellow
+            Write-Host "      -> $($deviceCode.UserCode)" -ForegroundColor White
+            Write-Host " "
+            Write-Host "========================================================================" -ForegroundColor Cyan
+            Write-Host "`nWaiting for you to complete the sign-in process..." -ForegroundColor Yellow
+        }
+    } else {
+        # Fallback to default behavior for older versions
+        Write-Host "Older MSAL.PS version detected. Using default authentication prompt." -ForegroundColor Yellow
+        $authResult = Get-MsalToken -ClientId $clientId -TenantId $tenantId -DeviceCode -Scope $scopes
     }
-    $authResult = $deviceCodeResult
+    
     Write-Host "Authentication successful for $($authResult.Account.Username)" -ForegroundColor Green
 } catch {
     Write-Host "Authentication failed: $($_.Exception.Message)" -ForegroundColor Red
