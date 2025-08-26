@@ -27,9 +27,8 @@ if (-not (Get-Module -ListAvailable -Name MSAL.PS)) {
 
 # 2. Authenticate the user via Device Code Flow
 Write-Host "Authenticating user..." -ForegroundColor Cyan
-$scopes = "https://graph.microsoft.com/DeviceManagementServiceConfig.ReadWrite.All"
+$scopes = "https://graph.microsoft.com/DeviceManagementServiceConfig.ReadWrite.All", "https://graph.microsoft.com/GroupMember.Read.All"
 try {
-    # This command will automatically display the code and URL to the user and wait for them to sign in.
     $authResult = Get-MsalToken -ClientId $clientId -TenantId $tenantId -DeviceCode -Scope $scopes
     Write-Host "Authentication successful for $($authResult.Account.Username)" -ForegroundColor Green
 } catch {
@@ -77,10 +76,48 @@ try {
     $response = Invoke-RestMethod -Uri $functionUrl -Method POST -Body $payload -Headers $headers
     Write-Host "`nSUCCESS: Service responded: '$response'" -ForegroundColor Green
 
-    # 6. Initiate System Reset
-    $reset = Read-Host "`nRegistration complete. The device must be reset. Proceed? (Y/N)"
-    if ($reset -eq 'Y' -or $reset -eq 'y') {
-        Start-Process "systemreset" -ArgumentList "-factoryreset" -Wait
+    # --- 6. Initiate System Reset with Detailed Instructions ---
+    Write-Host "`nRegistration is complete. The device must now be reset to apply the Autopilot profile."
+    $resetConfirmation = Read-Host "Press 'Y' to open the Windows Reset tool. (Y/N)"
+    
+    if ($resetConfirmation -eq 'Y' -or $resetConfirmation -eq 'y') {
+        try {
+            # Attempt to launch the system reset tool
+            Start-Process "systemreset" -ArgumentList "-factoryreset" -ErrorAction Stop
+            
+            # Provide clear, step-by-step instructions for the user to follow in the GUI
+            Write-Host " "
+            Write-Host "========================================================================" -ForegroundColor Cyan
+            Write-Host "            >>> ACTION REQUIRED: FOLLOW THESE STEPS <<<                 " -ForegroundColor White
+            Write-Host "========================================================================" -ForegroundColor Cyan
+            Write-Host "                                                                        "
+            Write-Host "   In the 'Reset this PC' window that has opened:                       " -ForegroundColor Yellow
+            Write-Host "                                                                        "
+            Write-Host "   1. On the 'Choose an option' screen, select:                         " -ForegroundColor Yellow
+            Write-Host "      -> [Remove everything]                                            " -ForegroundColor White
+            Write-Host "                                                                        "
+            Write-Host "   2. On the 'How would you like to reinstall Windows?' screen, select: " -ForegroundColor Yellow
+            Write-Host "      -> [Local reinstall]                                              " -ForegroundColor White
+            Write-Host "                                                                        "
+            Write-Host "   3. On the 'Additional settings' screen, select:                      " -ForegroundColor Yellow
+            Write-Host "      -> [Next]                                                         " -ForegroundColor White
+            Write-Host "                                                                        "
+            Write-Host "   4. On the final 'Ready to reset this PC' screen, click:              " -ForegroundColor Yellow
+            Write-Host "      -> [Reset]                                                        " -ForegroundColor White
+            Write-Host "                                                                        "
+            Write-Host "========================================================================" -ForegroundColor Cyan
+            Write-Host "`nThe device will now reset and begin the Autopilot process." -ForegroundColor Green
+            
+        } catch {
+            # Error handling if systemreset.exe is not found or fails to start
+            Write-Host "`nERROR: Could not automatically start the reset tool.                  " -ForegroundColor Red
+            Write-Host "Please reset the device manually:                                       " -ForegroundColor Yellow
+            Write-Host "  1. Go to Settings > Update & Security > Recovery.                     "
+            Write-Host "  2. Under 'Reset this PC', click 'Get started'.                        "
+            Write-Host "  3. Follow the on-screen instructions, choosing to 'Remove everything'."
+        }
+    } else {
+        Write-Host "Reset cancelled. Please manually reset the device to complete the Autopilot process." -ForegroundColor Yellow
     }
 
 } catch {
