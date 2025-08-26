@@ -14,16 +14,37 @@ $functionUrl = "https://fa-intunedeviceauto.azurewebsites.net/api/RegisterDevice
 
 # --- SCRIPT START ---
 
-# 1. Ensure MSAL.PS module is available
+# 1. Ensure MSAL.PS module is available with a robust installation strategy.
 if (-not (Get-Module -ListAvailable -Name MSAL.PS)) {
     Write-Host "MSAL.PS module not found. Attempting to install..." -ForegroundColor Yellow
     try {
-        Install-Module MSAL.PS -Scope CurrentUser -Force -AllowClobber
+        # First, try to get the latest version from the gallery.
+        Install-Module MSAL.PS -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+        Write-Host "Successfully installed the latest version of MSAL.PS." -ForegroundColor Green
     } catch {
-        Write-Host "Failed to install MSAL.PS module. Please install it manually and try again." -ForegroundColor Red
-        exit 1
+        Write-Host "Failed to install the latest version of MSAL.PS from the PowerShell Gallery." -ForegroundColor Yellow
+        Write-Host "Attempting to install a known-stable older version as a fallback..." -ForegroundColor Yellow
+        try {
+            # If the latest fails, try an older, reliable version.
+            Install-Module MSAL.PS -RequiredVersion 4.36.1.0 -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+            Write-Host "Successfully installed a fallback version of MSAL.PS." -ForegroundColor Green
+        } catch {
+            Write-Host "FATAL: All attempts to install the MSAL.PS module have failed." -ForegroundColor Red
+            Write-Host "Please check your internet connection or install the module manually and try again." -ForegroundColor Red
+            exit 1
+        }
+    }
+} else {
+    # If the module is already present, try to update it.
+    Write-Host "MSAL.PS module is already installed. Attempting to update..." -ForegroundColor Yellow
+    try {
+        Install-Module MSAL.PS -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+        Write-Host "MSAL.PS is now up to date." -ForegroundColor Green
+    } catch {
+        Write-Host "Could not update MSAL.PS. Proceeding with the currently installed version." -ForegroundColor Yellow
     }
 }
+
 
 # 2. Authenticate the user via Device Code Flow
 Write-Host "Authenticating user..." -ForegroundColor Cyan
