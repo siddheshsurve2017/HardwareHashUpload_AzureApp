@@ -15,6 +15,10 @@ $functionUrl = "https://fa-intunedeviceauto.azurewebsites.net/api/RegisterDevice
 # --- SCRIPT START ---
 
 # 1. Ensure MSAL.PS module is available with a robust installation strategy.
+
+# --- FIX: Unload any existing version of the module from the current session ---
+Remove-Module MSAL.PS -Force -ErrorAction SilentlyContinue
+
 if (-not (Get-Module -ListAvailable -Name MSAL.PS)) {
     Write-Host "MSAL.PS module not found. Attempting to install..." -ForegroundColor Yellow
     try {
