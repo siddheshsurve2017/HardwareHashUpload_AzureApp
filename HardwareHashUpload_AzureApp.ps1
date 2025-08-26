@@ -82,38 +82,41 @@ try {
     
     if ($resetConfirmation -eq 'Y' -or $resetConfirmation -eq 'y') {
         try {
-            # Attempt to launch the system reset tool
-            Start-Process "systemreset" -ArgumentList "-factoryreset" -ErrorAction Stop
-            
             # Provide clear, step-by-step instructions for the user to follow in the GUI
             Write-Host " "
             Write-Host "========================================================================" -ForegroundColor Cyan
-            Write-Host "            >>> ACTION REQUIRED: FOLLOW THESE STEPS <<<                 " -ForegroundColor White
+            Write-Host "            >>> ACTION REQUIRED: FOLLOW THESE STEPS <<<" -ForegroundColor White
             Write-Host "========================================================================" -ForegroundColor Cyan
-            Write-Host "                                                                        "
-            Write-Host "   In the 'Reset this PC' window that has opened:                       " -ForegroundColor Yellow
-            Write-Host "                                                                        "
-            Write-Host "   1. On the 'Choose an option' screen, select:                         " -ForegroundColor Yellow
-            Write-Host "      -> [Remove everything]                                            " -ForegroundColor White
-            Write-Host "                                                                        "
-            Write-Host "   2. On the 'How would you like to reinstall Windows?' screen, select: " -ForegroundColor Yellow
-            Write-Host "      -> [Local reinstall]                                              " -ForegroundColor White
-            Write-Host "                                                                        "
-            Write-Host "   3. On the 'Additional settings' screen, select:                      " -ForegroundColor Yellow
-            Write-Host "      -> [Next]                                                         " -ForegroundColor White
-            Write-Host "                                                                        "
-            Write-Host "   4. On the final 'Ready to reset this PC' screen, click:              " -ForegroundColor Yellow
-            Write-Host "      -> [Reset]                                                        " -ForegroundColor White
-            Write-Host "                                                                        "
+            Write-Host " "
+            Write-Host "   In the 'Reset this PC' window that will open shortly:" -ForegroundColor Yellow
+            Write-Host " "
+            Write-Host "   1. On the 'Choose an option' screen, select:" -ForegroundColor Yellow
+            Write-Host "      -> [Remove everything]" -ForegroundColor White
+            Write-Host " "
+            Write-Host "   2. On the 'How would you like to reinstall Windows?' screen, select:" -ForegroundColor Yellow
+            Write-Host "      -> [Local reinstall]" -ForegroundColor White
+            Write-Host " "
+            Write-Host "   3. On the 'Additional settings' screen, select:" -ForegroundColor Yellow
+            Write-Host "      -> [Next]" -ForegroundColor White
+            Write-Host " "
+            Write-Host "   4. On the final 'Ready to reset this PC' screen, click:" -ForegroundColor Yellow
+            Write-Host "      -> [Reset]" -ForegroundColor White
+            Write-Host " "
             Write-Host "========================================================================" -ForegroundColor Cyan
-            Write-Host "`nThe device will now reset and begin the Autopilot process." -ForegroundColor Green
+            
+            # Add a delay for the technician to read the instructions
+            Write-Host "`nOpening the reset window in 20 seconds. Please review the steps above." -ForegroundColor Yellow
+            Start-Sleep -Seconds 20
+
+            # Attempt to launch the system reset tool
+            Start-Process "systemreset" -ArgumentList "-factoryreset" -ErrorAction Stop
             
         } catch {
             # Error handling if systemreset.exe is not found or fails to start
-            Write-Host "`nERROR: Could not automatically start the reset tool.                  " -ForegroundColor Red
-            Write-Host "Please reset the device manually:                                       " -ForegroundColor Yellow
-            Write-Host "  1. Go to Settings > Update & Security > Recovery.                     "
-            Write-Host "  2. Under 'Reset this PC', click 'Get started'.                        "
+            Write-Host "`nERROR: Could not automatically start the reset tool." -ForegroundColor Red
+            Write-Host "Please reset the device manually:" -ForegroundColor Yellow
+            Write-Host "  1. Go to Settings > Update & Security > Recovery."
+            Write-Host "  2. Under 'Reset this PC', click 'Get started'."
             Write-Host "  3. Follow the on-screen instructions, choosing to 'Remove everything'."
         }
     } else {
